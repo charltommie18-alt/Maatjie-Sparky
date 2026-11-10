@@ -3,7 +3,7 @@
  * configuration. Never pass a service-role or secret key to a browser. */
 import { createSupabaseAccount } from './supabaseAccount.js';
 
-export function prepareSupabaseBrowserAccount({ createClient, url, publishableKey } = {}) {
+export function prepareSupabaseBrowserAccount({ createClient, url, publishableKey, sessionStorage } = {}) {
   if (typeof createClient !== 'function' || typeof url !== 'string' || typeof publishableKey !== 'string') return null;
   let projectUrl;
   try {
@@ -14,10 +14,13 @@ export function prepareSupabaseBrowserAccount({ createClient, url, publishableKe
   // This preparation accepts only the clearly labelled new publishable key format.
   // Legacy JWT-style keys, sb_secret keys and service-role credentials are rejected.
   if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(publishableKey)) return null;
+  // Opt-in, tab-scoped storage is only for this development test. No credentials in URLs.
+  if (sessionStorage != null && ['getItem', 'setItem', 'removeItem'].some(name => typeof sessionStorage[name] !== 'function')) return null;
   try {
-    const client = createClient(projectUrl.origin, publishableKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-    });
+    const auth = sessionStorage
+      ? { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: sessionStorage }
+      : { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
+    const client = createClient(projectUrl.origin, publishableKey, { auth });
     return createSupabaseAccount(client);
   } catch { return null; }
 }

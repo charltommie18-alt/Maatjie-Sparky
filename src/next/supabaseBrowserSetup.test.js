@@ -17,6 +17,17 @@ test('prepares account boundary using only explicit public config', async () => 
   assert.equal((await account.signIn('u@example.test', 'pw')).ok, true);
   assert.deepEqual(await account.verifiedUser(), { id: 'user' });
 });
+test('explicit tab storage enables persistence without accepting URL sessions', () => {
+  const storage = { getItem() {}, setItem() {}, removeItem() {} };
+  let authOptions;
+  const account = prepareSupabaseBrowserAccount({ url, publishableKey, sessionStorage: storage, createClient: (u, k, opts) => {
+    authOptions = opts.auth;
+    return { auth: { signUp() {}, signInWithPassword() {}, signOut() {}, getUser() {} } };
+  } });
+  assert.ok(account);
+  assert.deepEqual(authOptions, { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage });
+  assert.equal(prepareSupabaseBrowserAccount({ createClient: fakeClient, url, publishableKey, sessionStorage: {} }), null);
+});
 test('fails closed on missing or invalid configuration and secrets', () => {
   let calls = 0; const createClient = () => { calls++; };
   for (const changes of [ { url: '' }, { url: 'http://example.supabase.co' }, { url: 'https://supabase.co.evil.test' }, { url: 'https://user@example.supabase.co' }, { url: 'https://example.supabase.co/path' }, { url: 'https://example.supabase.co?x=1' }, { publishableKey: 'sb_secret_test' }, { publishableKey: 'eyJ.fake.jwt' }, { publishableKey: '' } ]) {

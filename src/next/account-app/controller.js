@@ -3,7 +3,7 @@ export function bindAccountScreen(doc, account) {
   const $ = id => doc.getElementById(id);
   const form = $('account-form'), email = $('account-email'), password = $('account-password'), confirmation = $('account-confirm');
   const status = $('account-status'), submit = $('account-submit'), signout = $('signout');
-  let mode = 'signin', pending = false;
+  let mode = 'signin', pending = !!account;
   const available = !!account;
   function setMode(next) {
     if (pending) return;
@@ -20,8 +20,23 @@ export function bindAccountScreen(doc, account) {
   }
   $('show-signin').addEventListener('click', () => setMode('signin'));
   $('show-signup').addEventListener('click', () => setMode('signup'));
-  submit.disabled = !available;
-  status.textContent = available ? 'Rekeningdiens is gereed vir ’n privaat toets.' : 'Rekeningdiens is nie ingestel nie.';
+  submit.disabled = true;
+  status.textContent = available ? 'Aanmelding word nagegaan.' : 'Rekeningdiens is nie ingestel nie.';
+  const ready = available ? (async () => {
+    try {
+      const user = await account.verifiedUser();
+      if (user) {
+        signout.hidden = false;
+        status.textContent = 'Jy is op dié toestel aangemeld. AI is steeds nie beskikbaar nie.';
+      } else {
+        signout.hidden = true;
+        status.textContent = 'Rekeningdiens is gereed vir ’n privaat toets.';
+      }
+    } catch {
+      signout.hidden = true;
+      status.textContent = 'Aanmelding kon nie geverifieer word nie. Meld weer aan.';
+    } finally { pending = false; submit.disabled = false; }
+  })() : Promise.resolve();
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!available || pending) return;
@@ -43,7 +58,7 @@ export function bindAccountScreen(doc, account) {
       else {
         const user = await account.verifiedUser();
         if (user) { status.textContent = 'Jy is op dié toestel aangemeld. AI is steeds nie beskikbaar nie.'; signout.hidden = false; }
-        else status.textContent = 'Jou bevestigde aanmelding kon nie geverifieer word nie.';
+        else { signout.hidden = true; status.textContent = 'Jou bevestigde aanmelding kon nie geverifieer word nie.'; }
       }
     } catch { form.reset(); status.textContent = 'Die rekeningdiens is nie beskikbaar nie. Probeer later weer.'; }
     finally { pending = false; submit.disabled = false; }
@@ -55,4 +70,5 @@ export function bindAccountScreen(doc, account) {
     catch { status.textContent = 'Afmelding kon nie bevestig word nie. Probeer weer.'; }
     finally { pending = false; submit.disabled = false; signout.disabled = false; }
   });
+  return ready;
 }
