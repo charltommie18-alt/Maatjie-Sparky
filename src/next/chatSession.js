@@ -15,7 +15,6 @@ export function createChatSession(storage, request = requestChatReply) {
     isSaving: () => saving,
     enableSaving() {
       requireIdle();
-      // Restore first to avoid overwriting a previous session without warning.
       const previous = store.load();
       if (messages.length && previous.length) {
         throw new Error("Existing saved history must be resolved before saving this session");
@@ -28,7 +27,6 @@ export function createChatSession(storage, request = requestChatReply) {
     disableSaving() { requireIdle(); saving = false; },
     clear() {
       requireIdle();
-      // Do not claim deletion if removal failed.
       store.clear();
       messages = [];
     },
@@ -43,7 +41,7 @@ export function createChatSession(storage, request = requestChatReply) {
         messages = [...messages, outgoing];
         persist();
         const reply = await request(getMessages());
-        if (!reply || reply.role !== "assistant" || typeof reply.text !== "string" || !reply.text.trim() || reply.text.length > 20000 || typeof reply.createdAt !== "string" || Number.isNaN(Date.parse(reply.createdAt))) {
+        if (!reply || reply.role !== "assistant" || typeof reply.text !== "string" || !reply.text.trim() || reply.text.length > 4000 || typeof reply.createdAt !== "string" || Number.isNaN(Date.parse(reply.createdAt))) {
           throw new Error("Invalid response from chat service");
         }
         messages = [...messages, { role: "assistant", text: reply.text.trim(), createdAt: reply.createdAt }];
