@@ -1,0 +1,11 @@
+{
+  "name": "Maatjie & Sparky - AI Kid Companion",
+  "description": "Bilingual AI companion for kids in Afrikaans and English, teaching emotional intelligence (EQ) and math skills with adaptive learning, parental controls, WhatsApp summaries, photo sharing, and offline PWA.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
