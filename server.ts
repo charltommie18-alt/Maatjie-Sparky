@@ -13,7 +13,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '1mb' }));
+
+// These demo endpoints use one unauthenticated, process-wide store. Disable them
+// until real per-family authentication and private storage are implemented.
+app.use(['/api/whatsapp', '/api/vault/media'], (_req: Request, res: Response) => {
+  res.status(503).json({ success: false, error: 'This feature is unavailable until private storage is implemented.' });
+});
 
 // Initialize GoogleGenAI SDK per gemini-api skill instructions
 const apiKey = process.env.GEMINI_API_KEY;
@@ -853,14 +859,10 @@ app.post('/api/vault/media', (req: Request, res: Response) => {
 });
 
 // Multi-device sync endpoint
-app.post('/api/vault/sync', (req: Request, res: Response) => {
-  const { encryptedPayload } = req.body;
-  res.json({
-    success: true,
-    syncedAt: new Date().toISOString(),
-    itemsSynced: encryptedPayload ? Object.keys(encryptedPayload).length : 5,
-    status: 'encrypted_and_synchronized'
-  });
+app.post('/api/vault/sync', (_req: Request, res: Response) => {
+  // There is no durable multi-device storage configured yet. Do not report a
+  // successful sync or store family data in a shared process-wide mock.
+  res.status(501).json({ success: false, error: 'Multi-device sync is not available.' });
 });
 
 // Setup Vite middleware in dev or serve static files in production
