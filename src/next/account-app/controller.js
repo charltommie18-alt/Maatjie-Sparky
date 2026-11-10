@@ -3,50 +3,67 @@ export function bindAccountScreen(doc, account) {
   const $ = id => doc.getElementById(id);
   const form = $('account-form'), email = $('account-email'), password = $('account-password'), confirmation = $('account-confirm');
   const status = $('account-status'), submit = $('account-submit'), signout = $('signout');
-  let mode = 'signin', pending = !!account;
+  const signinTab = $('show-signin'), signupTab = $('show-signup');
+  let mode = 'signin', pending = !!account, signedIn = false;
   const available = !!account;
+  function render() {
+    form.hidden = signedIn;
+    signinTab.disabled = !available || pending || signedIn;
+    signupTab.disabled = !available || pending || signedIn;
+    submit.disabled = !available || pending || signedIn;
+    signout.hidden = !signedIn;
+    signout.disabled = !available || pending || !signedIn;
+  }
   function setMode(next) {
-    if (pending) return;
+    if (!available || pending || signedIn) return;
     mode = next; form.reset(); status.textContent = '';
     const signup = mode === 'signup';
-    $('show-signin').setAttribute('aria-pressed', String(!signup));
-    $('show-signup').setAttribute('aria-pressed', String(signup));
+    signinTab.setAttribute('aria-pressed', String(!signup));
+    signupTab.setAttribute('aria-pressed', String(signup));
     $('account-heading').textContent = signup ? 'Skep jou rekening' : 'Welkom terug';
     $('account-intro').textContent = signup ? 'Gebruik ’n e-posadres waartoe jy toegang het.' : 'Meld aan met jou e-posadres.';
     $('confirm-wrap').hidden = !signup; confirmation.required = signup;
     password.autocomplete = signup ? 'new-password' : 'current-password';
     submit.textContent = signup ? 'Skep rekening' : 'Meld aan';
-    if (!available) status.textContent = 'Rekeningdiens is nie ingestel nie.';
   }
-  $('show-signin').addEventListener('click', () => setMode('signin'));
-  $('show-signup').addEventListener('click', () => setMode('signup'));
-  submit.disabled = true;
+  function showSignedIn() {
+    signedIn = true;
+    $('account-heading').textContent = 'Jy is aangemeld';
+    $('account-intro').textContent = 'Hierdie is steeds net ’n privaat rekeningtoets.';
+    status.textContent = 'Jy is aangemeld en jou aanmelding is geverifieer. AI is steeds nie beskikbaar nie.';
+  }
+  function showSignedOut() {
+    signedIn = false;
+    mode = 'signin';
+    signinTab.setAttribute('aria-pressed', 'true'); signupTab.setAttribute('aria-pressed', 'false');
+    $('account-heading').textContent = 'Welkom terug';
+    $('account-intro').textContent = 'Meld aan met jou e-posadres.';
+    $('confirm-wrap').hidden = true; confirmation.required = false;
+    password.autocomplete = 'current-password'; submit.textContent = 'Meld aan';
+  }
+  signinTab.addEventListener('click', () => setMode('signin'));
+  signupTab.addEventListener('click', () => setMode('signup'));
+  render();
   status.textContent = available ? 'Aanmelding word nagegaan.' : 'Rekeningdiens is nie ingestel nie.';
   const ready = available ? (async () => {
     try {
       const user = await account.verifiedUser();
-      if (user) {
-        signout.hidden = false;
-        status.textContent = 'Jy is op dié toestel aangemeld. AI is steeds nie beskikbaar nie.';
-      } else {
-        signout.hidden = true;
-        status.textContent = 'Rekeningdiens is gereed vir ’n privaat toets.';
-      }
+      if (user) showSignedIn();
+      else { showSignedOut(); status.textContent = 'Rekeningdiens is gereed vir ’n privaat toets.'; }
     } catch {
-      signout.hidden = true;
-      status.textContent = 'Aanmelding kon nie geverifieer word nie. Meld weer aan.';
-    } finally { pending = false; submit.disabled = false; }
+      showSignedOut(); status.textContent = 'Aanmelding kon nie geverifieer word nie. Meld weer aan.';
+    } finally { pending = false; render(); }
   })() : Promise.resolve();
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (!available || pending) return;
+    if (!available || pending || signedIn) return;
     if (!email.validity.valid || !password.validity.valid || (mode === 'signup' && !confirmation.validity.valid)) {
       status.textContent = 'Vul ’n geldige e-posadres en wagwoord van minstens 8 karakters in.'; return;
     }
     if (mode === 'signup' && password.value !== confirmation.value) {
       confirmation.value = ''; status.textContent = 'Die wagwoorde stem nie ooreen nie.'; confirmation.focus(); return;
     }
-    pending = true; submit.disabled = true;
+    pending = true; render();
     const thisMode = mode, address = email.value, secret = password.value;
     password.value = ''; confirmation.value = '';
     status.textContent = 'Wag asseblief.';
@@ -57,18 +74,21 @@ export function bindAccountScreen(doc, account) {
       else if (thisMode === 'signup') status.textContent = 'As registrasie aanvaar is, kyk jou e-pos vir ’n bevestigingskakel voordat jy aanmeld.';
       else {
         const user = await account.verifiedUser();
-        if (user) { status.textContent = 'Jy is op dié toestel aangemeld. AI is steeds nie beskikbaar nie.'; signout.hidden = false; }
-        else { signout.hidden = true; status.textContent = 'Jou bevestigde aanmelding kon nie geverifieer word nie.'; }
+        if (user) showSignedIn();
+        else { showSignedOut(); status.textContent = 'Jou bevestigde aanmelding kon nie geverifieer word nie.'; }
       }
-    } catch { form.reset(); status.textContent = 'Die rekeningdiens is nie beskikbaar nie. Probeer later weer.'; }
-    finally { pending = false; submit.disabled = false; }
+    } catch { form.reset(); showSignedOut(); status.textContent = 'Die rekeningdiens is nie beskikbaar nie. Probeer later weer.'; }
+    finally { pending = false; render(); }
   });
   signout.addEventListener('click', async () => {
-    if (!available || pending) return;
-    pending = true; submit.disabled = true; signout.disabled = true;
-    try { const result = await account.signOut(); if (result?.ok) { signout.hidden = true; status.textContent = 'Jy is op dié toestel afgemeld.'; } else status.textContent = 'Afmelding kon nie bevestig word nie. Probeer weer.'; }
-    catch { status.textContent = 'Afmelding kon nie bevestig word nie. Probeer weer.'; }
-    finally { pending = false; submit.disabled = false; signout.disabled = false; }
+    if (!available || pending || !signedIn) return;
+    pending = true; render();
+    try {
+      const result = await account.signOut();
+      if (result?.ok) { showSignedOut(); form.reset(); status.textContent = 'Jy is op dié toestel afgemeld.'; }
+      else status.textContent = 'Afmelding kon nie bevestig word nie. Probeer weer.';
+    } catch { status.textContent = 'Afmelding kon nie bevestig word nie. Probeer weer.'; }
+    finally { pending = false; render(); }
   });
   return ready;
 }
