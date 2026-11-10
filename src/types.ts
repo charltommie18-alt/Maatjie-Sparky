@@ -20,6 +20,7 @@ export interface ChildProfile {
   autoLockEnabled?: boolean; // When false, screen never auto-locks so parent/child can play without interruption
   uploadedVoiceClips?: { id: string; name: string; url: string; date: string; category?: string }[];
   selectedVoiceType?: 'elevenlabs' | 'recorded' | 'webspeech';
+  elevenLabsVoiceId?: string;
   selectedVoiceClipId?: string;
   activeCustomVoiceUrl?: string;
 }
