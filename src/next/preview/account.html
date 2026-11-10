@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="af">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Slim Maat | Rekeningvoorskou</title>
+  <link rel="stylesheet" href="./account.css">
+</head>
+<body>
+  <main class="shell">
+    <header><p class="eyebrow">SLEGS ONTWIKKELING</p><h1>Slim Maat</h1><p>Rekeningvoorskou</p></header>
+    <aside class="notice"><strong>Net ’n toets.</strong> Geen rekening word geskep nie en aanmelding werk nog nie. Gebruik slegs opgemaakte toetsbesonderhede, nooit ’n regte wagwoord nie.</aside>
+    <section class="card" aria-labelledby="account-heading">
+      <nav class="tabs" aria-label="Kies rekeningskerm"><button type="button" id="show-signin" aria-pressed="true">Meld aan</button><button type="button" id="show-signup" aria-pressed="false">Skep rekening</button></nav>
+      <h2 id="account-heading">Welkom terug</h2>
+      <p id="account-intro">Probeer die aanmeldskerm met opgemaakte besonderhede.</p>
+      <form id="account-form">
+        <label for="account-email">E-posadres</label>
+        <input id="account-email" name="email" type="email" autocomplete="off" maxlength="254" required placeholder="toets@example.com">
+        <label for="account-password">Wagwoord</label>
+        <input id="account-password" name="password" type="password" autocomplete="off" minlength="8" maxlength="1024" required placeholder="Slegs ’n toetswagwoord">
+        <div id="confirm-wrap" hidden>
+          <label for="account-confirm">Bevestig wagwoord</label>
+          <input id="account-confirm" name="confirm" type="password" autocomplete="off" minlength="8" maxlength="1024" placeholder="Herhaal toetswagwoord">
+        </div>
+        <button type="submit" id="account-submit">Toets aanmelding</button>
+      </form>
+      <p id="account-status" role="status" aria-live="polite"></p>
+    </section>
+    <p class="footnote">Hierdie voorskou stoor of stuur nie die besonderhede nie. Daar is nog geen werkende ouderdomsverifikasie of regte AI nie.</p>
+  </main>
+  <script type="module" src="./account.js"></script>
+</body>
+</html>
