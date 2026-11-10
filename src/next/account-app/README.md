@@ -1,0 +1,9 @@
+# Slim Maat private account integration (development only)
+
+This isolated test app is not mounted in the original app. It can make real Supabase Auth requests if explicit public config is supplied, but is not release-ready. AI remains disconnected and email confirmation is not age verification. Do not deploy publicly or use real users until the security, privacy and end-to-end checks are complete.
+
+Node 20 and pnpm are needed. In this directory run `pnpm install --frozen-lockfile`. Supply `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` through a local ignored `.env.local` or process environment; use only the intended Slim Maat project, never a secret/service-role key. Missing/invalid config disables the UI. Start `pnpm dev` on loopback. The included adapter deliberately keeps sessions in memory: reload loses the session; token auto-refresh and URL session detection are disabled. This is not a final multi-device session design.
+
+Before a live test, configure Supabase email confirmation and suitable Site URL / allowed redirect URLs for the isolated test environment, and verify mail delivery and provider limits. The sign-up confirmation link uses the configured Supabase Site URL; opening it may land on a different page and does not automatically sign the user in. Log in after confirming. Supabase's default email service has restrictive limits and may only deliver to authorised team addresses. Never paste credentials or passwords into chat.
+
+Tests use mock clients: they do not prove email delivery or live authentication. A production launch still requires session persistence/refresh design, password reset, server-side token verification, independent adult eligibility, rate limits, moderation, RLS and retention/export/delete policy, redirect and SMTP configuration, security review and real end-to-end testing. The old preview remains a no-network mock.
