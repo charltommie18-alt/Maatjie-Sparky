@@ -7,6 +7,7 @@ import {
 import { ChildProfile, ParentLoveNote, WhatsAppLog, VaultMedia } from '../types';
 import { encryptPayload, decryptPayload } from '../utils/encryption';
 import { speechService } from '../utils/speech';
+import { VOICE_CHOICES } from '../utils/voiceChoices';
 
 interface ParentPortalProps {
   isOpen: boolean;
@@ -40,8 +41,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
   const [autoLockEnabled, setAutoLockEnabled] = useState(profile.autoLockEnabled ?? false);
 
   // ElevenLabs Voice & Custom Voice Clips state
-  const [elevenVoiceId, setElevenVoiceId] = useState('rHNYx9huRzABmodCtI4Q');
-  const [elevenApiKey, setElevenApiKey] = useState('');
+  const [elevenVoiceKey, setElevenVoiceKey] = useState(profile.elevenLabsVoiceKey || 'luna');
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [voiceSavedNotice, setVoiceSavedNotice] = useState<string | null>(null);
   const [voiceClips, setVoiceClips] = useState<{ id: string; name: string; url: string; date: string }[]>(
@@ -86,10 +86,16 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
     fetch('/api/elevenlabs/status')
       .then(r => r.json())
       .then(d => {
-        if (d.voiceId) setElevenVoiceId(d.voiceId);
+        if (d.defaultVoiceKey && !profile.elevenLabsVoiceKey) setElevenVoiceKey(d.defaultVoiceKey);
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setSelectedVoiceType(profile.selectedVoiceType || (profile.selectedVoiceClipId ? 'recorded' : 'elevenlabs'));
+    setSelectedVoiceClipId(profile.selectedVoiceClipId);
+    if (profile.elevenLabsVoiceKey) setElevenVoiceKey(profile.elevenLabsVoiceKey);
+  }, [profile.selectedVoiceType, profile.selectedVoiceClipId, profile.elevenLabsVoiceKey]);
 
   useEffect(() => {
     setNameInput(profile.name);
@@ -219,21 +225,18 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
       const res = await fetch('/api/elevenlabs/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: elevenApiKey.trim() || undefined,
-          voiceId: elevenVoiceId.trim() || 'rHNYx9huRzABmodCtI4Q'
-        })
+        body: JSON.stringify({ voiceKey: elevenVoiceKey })
       });
       const data = await res.json();
       if (data.success) {
-        speechService.setVoiceId(data.voiceId);
-        if (elevenApiKey.trim()) speechService.setApiKey(elevenApiKey.trim());
-        setVoiceSavedNotice('ElevenLabs Afrikaanse stemkonfigurasie suksesvol gestoor! 🎙️');
+        speechService.setVoiceKey(data.voiceKey);
+        onUpdateProfile({ elevenLabsVoiceKey: data.voiceKey });
+        setVoiceSavedNotice('ElevenLabs-stemkeuse is suksesvol gestoor! 🎙️');
         speechService.playSound('success');
         setTimeout(() => setVoiceSavedNotice(null), 4000);
       }
     } catch (err) {
-      console.error('Failed to configure ElevenLabs', err);
+      console.error('Failed to save voice selection', err);
     }
   };
 
@@ -241,14 +244,9 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
     setIsTestingVoice(true);
     speechService.unlockAudio();
     speechService.setMuted(false);
-    speechService.playSound('pop');
-    speechService.setVoiceId(elevenVoiceId.trim() || 'rHNYx9huRzABmodCtI4Q');
-    if (elevenApiKey.trim()) speechService.setApiKey(elevenApiKey.trim());
-
-    const testText = `Aitsa! Ek is Maatjie, en ek praat met die egte Afrikaanse ElevenLabs stem! Kom ons speel en tel saam!`;
-    speechService.speak(testText, 'af', () => {
-      setIsTestingVoice(false);
-    });
+    speechService.setVoiceKey(elevenVoiceKey);
+    const testText = `Aitsa! Ek is Maatjie, en ek praat met jou gekose stem! Kom ons speel en tel saam!`;
+    speechService.speak(testText, 'af', () => setIsTestingVoice(false));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,12 +367,14 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
     setSelectedVoiceClipId(undefined);
     setSelectedVoiceType('elevenlabs');
     speechService.setCustomVoice(null, 'elevenlabs');
+    speechService.setVoiceKey(elevenVoiceKey);
     onUpdateProfile({
       selectedVoiceClipId: undefined,
       selectedVoiceType: 'elevenlabs',
-      activeCustomVoiceUrl: undefined
+      activeCustomVoiceUrl: undefined,
+      elevenLabsVoiceKey: elevenVoiceKey
     });
-    setVoiceSavedNotice(`✓ ElevenLabs Afrikaanse Stem (${elevenVoiceId}) is nou die aktiewe stem! 🦁`);
+    setVoiceSavedNotice('✓ Jou gekose ElevenLabs-stem is nou aktief! 🦁');
     speechService.playSound('star');
     setTimeout(() => setVoiceSavedNotice(null), 4000);
   };
@@ -914,7 +914,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
                         </div>
                         <div className="font-black text-xs mt-2">ElevenLabs Afrikaans</div>
                         <div className={`text-[11px] truncate font-mono mt-0.5 ${selectedVoiceType === 'elevenlabs' ? 'text-slate-600 font-bold' : 'text-white/80'}`}>
-                          {elevenVoiceId}
+                          {elevenVoiceKey}
                         </div>
                       </button>
 
@@ -1104,95 +1104,48 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
                     )}
                   </div>
 
-                  {/* 4. ElevenLabs Afrikaans Voice (rHNYx9huRzABmodCtI4Q) */}
+                  {/* 4. Server-configured ElevenLabs voice choices */}
                   <div className={`p-5 rounded-3xl border-2 space-y-3 transition ${
                     selectedVoiceType === 'elevenlabs'
                       ? 'bg-sky-50 border-sky-400 ring-2 ring-sky-300'
                       : 'bg-sky-50/60 border-sky-200'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🎙️</span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-black text-sky-950 text-base">
-                              ElevenLabs Afrikaanse Stem (Neural Voice)
-                            </h4>
-                            {selectedVoiceType === 'elevenlabs' && (
-                              <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-xs">
-                                ✓ AKTIEWE STEM
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-sky-700">
-                            Gekoppelde Stem-ID: <strong className="font-mono text-sky-900 bg-sky-100 px-1.5 py-0.5 rounded">{elevenVoiceId}</strong>
-                          </p>
-                        </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="font-black text-sky-950 text-base">ElevenLabs-stem</h4>
+                        <p className="text-xs text-sky-700">Kies een van die drie veilige stemopsies. Stem-instellings bly op die bediener.</p>
                       </div>
-                      <span className="text-[10px] font-bold bg-sky-200 text-sky-800 px-2.5 py-1 rounded-full border border-sky-300">
-                        Multi-lingual v2
-                      </span>
+                      <span className="text-[10px] font-bold bg-sky-200 text-sky-800 px-2.5 py-1 rounded-full border border-sky-300">Multi-lingual v2</span>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-xs font-bold text-sky-900 mb-1">
-                          Voice ID (Verstek: rHNYx9huRzABmodCtI4Q):
-                        </label>
-                        <input
-                          type="text"
-                          value={elevenVoiceId}
-                          onChange={(e) => setElevenVoiceId(e.target.value)}
-                          placeholder="rHNYx9huRzABmodCtI4Q"
-                          className="w-full p-2.5 rounded-xl border border-sky-300 bg-white text-xs font-mono font-bold text-slate-800"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-sky-900 mb-1">
-                          ElevenLabs API Sleutel (Opsioneel):
-                        </label>
-                        <input
-                          type="password"
-                          value={elevenApiKey}
-                          onChange={(e) => setElevenApiKey(e.target.value)}
-                          placeholder="Voer sleutel in indien jy jou eie rekening gebruik"
-                          className="w-full p-2.5 rounded-xl border border-sky-300 bg-white text-xs font-bold text-slate-800"
-                        />
-                      </div>
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {VOICE_CHOICES.map((voice) => (
+                        <button
+                          key={voice.id}
+                          onClick={() => {
+                            setElevenVoiceKey(voice.id);
+                            speechService.setVoiceKey(voice.id);
+                            onUpdateProfile({ elevenLabsVoiceKey: voice.id, selectedVoiceType: 'elevenlabs', selectedVoiceClipId: undefined, activeCustomVoiceUrl: undefined });
+                            setSelectedVoiceType('elevenlabs');
+                            setSelectedVoiceClipId(undefined);
+                            speechService.setCustomVoice(null, 'elevenlabs');
+                          }}
+                          className={`p-3 rounded-xl text-sm font-bold border-2 ${elevenVoiceKey === voice.id ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white border-sky-200 text-sky-900'}`}
+                        >
+                          {voice.label}{elevenVoiceKey === voice.id ? ' ✓' : ''}
+                        </button>
+                      ))}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {selectedVoiceType === 'elevenlabs' ? (
-                        <span className="px-3.5 py-2.5 bg-emerald-600 text-white font-black text-xs rounded-xl shadow-xs flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>ElevenLabs is Aktief</span>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={handleSelectElevenLabs}
-                          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Kies ElevenLabs as Stem 🦁</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={handleTestElevenVoice}
-                        disabled={isTestingVoice}
-                        className="flex-1 py-2.5 px-3 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 min-w-[180px]"
-                      >
-                        <span>🔊</span>
-                        <span>{isTestingVoice ? 'Speel klank...' : 'Toets Stem (rHNYx9huRzABmodCtI4Q)'}</span>
+                      <button onClick={handleSelectElevenLabs} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{selectedVoiceType === 'elevenlabs' ? 'ElevenLabs is Aktief' : 'Kies ElevenLabs as Stem 🦁'}</span>
                       </button>
-
-                      <button
-                        onClick={handleSaveElevenLabs}
-                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                      >
-                        Stoor Stem 💾
+                      <button onClick={handleTestElevenVoice} disabled={isTestingVoice} className="flex-1 py-2.5 px-3 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 min-w-[180px]">
+                        <span>🔊</span><span>{isTestingVoice ? 'Speel klank...' : 'Toets Stem'}</span>
                       </button>
+                      <button onClick={handleSaveElevenLabs} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer">Stoor Stem 💾</button>
                     </div>
                   </div>
                 </div>
