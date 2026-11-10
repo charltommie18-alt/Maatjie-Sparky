@@ -12,7 +12,7 @@ class Element {
 }
 let elements, data, confirmDelete;
 beforeEach(() => {
-  elements=Object.fromEntries(['status','form','messages','toggle-save','save-state','clear','export','message','send'].map(x=>[x,new Element(x)]));
+  elements=Object.fromEntries(['status','form','messages','toggle-save','save-state','clear','export','message','send','shared-message','prepare-reply'].map(x=>[x,new Element(x)]));
   data=new Map(); confirmDelete=true;
   globalThis.window={ localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}, confirm:()=>confirmDelete };
   globalThis.document={getElementById:id=>elements[id],createElement:()=>new Element(),createTextNode:text=>({textContent:text}),querySelectorAll:()=>[]};
@@ -37,4 +37,17 @@ test('restore only occurs after consent',async()=>{
  await start(); await elements['toggle-save'].fire('click'); elements.message.value='Hallo'; await elements.form.fire('submit');
  await start(); assert.equal(elements.messages.children.length,0);
  await elements['toggle-save'].fire('click'); assert.equal(elements.messages.children.length,2);
+});
+test('reply preparation requires input and never sends automatically',async()=>{
+ await start(); await elements['prepare-reply'].fire('click');
+ assert.match(elements.status.textContent,/Plak eers/); assert.equal(elements.messages.children.length,0);
+ elements['shared-message'].value='  Hello there  '; await elements['prepare-reply'].fire('click');
+ assert.match(elements.message.value,/Hello there/); assert.equal(elements.messages.children.length,0);
+ assert.equal(data.size,0); assert.match(elements.status.textContent,/Niks is gestuur nie/);
+});
+test('existing chat text is retained if replacement is not confirmed',async()=>{
+ await start(); elements.message.value='Keep this'; elements['shared-message'].value='New message'; confirmDelete=false;
+ await elements['prepare-reply'].fire('click'); assert.equal(elements.message.value,'Keep this');
+ confirmDelete=true; await elements['prepare-reply'].fire('click'); assert.match(elements.message.value,/New message/);
+ assert.equal(elements.messages.children.length,0);
 });
