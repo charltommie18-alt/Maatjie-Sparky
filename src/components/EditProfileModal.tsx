@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, X, Check, Sparkles, Volume2, Globe, Calculator } from 'lucide-react';
 import { ChildProfile, LanguageMode } from '../types';
 import { speechService } from '../utils/speech';
+import { VOICE_CHOICES } from '../utils/voiceChoices';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -22,22 +23,49 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [language, setLanguage] = useState<LanguageMode>(profile.language);
   const [mathLevel, setMathLevel] = useState(profile.mathLevel || 1);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [voiceTestError, setVoiceTestError] = useState('');
 
   if (!isOpen) return null;
 
   const avatars = ['🦁', '🦄', '🐼', '🚀', '🐶', '🐱', '🦖', '🐻', '🦊', '🐰', '🐘', '⭐'];
 
-  const handleTestVoice = () => {
+  const handleChooseVoice = (voiceId: string) => {
+    setVoiceTestError('');
+    speechService.stopSpeaking();
+    speechService.setCustomVoice(null, 'elevenlabs');
+    speechService.setVoiceKey(voiceId);
+    onSaveProfile({ selectedVoiceType: 'elevenlabs', selectedVoiceClipId: undefined, activeCustomVoiceUrl: undefined, elevenLabsVoiceKey: voiceId });
+  };
+
+  const handleTestVoice = async () => {
     setIsTestingVoice(true);
+    setVoiceTestError('');
     speechService.unlockAudio();
     speechService.setMuted(false);
-    speechService.playSound('pop');
     const testPhrase = language === 'en'
       ? `Hello ${name || 'friend'}! I am ready to play and learn with you!`
-      : `Hallo ${name || 'maatjie'}! Ek is Maatjie, en ek praat nou mooi egte Afrikaans saam met jou! Aitsa!`;
-    speechService.speak(testPhrase, language, () => {
+      : `Hallo ${name || 'maatjie'}! Ek is Maatjie. Kom ons speel saam!`;
+    if (profile.selectedVoiceType !== 'elevenlabs' && profile.selectedVoiceType) {
+      speechService.speak(testPhrase, language, () => setIsTestingVoice(false));
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        body: JSON.stringify({ text: testPhrase, voiceKey: profile.elevenLabsVoiceKey || speechService.elevenLabsVoiceKey })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.audioUrl || !(await speechService.playAudioUrl(data.audioUrl))) {
+        setVoiceTestError('Die stem kon nie gespeel word nie. Vra ’n ouer om die ElevenLabs-verbinding na te gaan.');
+      }
+    } catch {
+      setVoiceTestError('Die stem kon nie gespeel word nie. Vra ’n ouer om die ElevenLabs-verbinding na te gaan.');
+    } finally {
+      clearTimeout(timeout);
       setIsTestingVoice(false);
-    });
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -81,6 +109,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            disabled={isTestingVoice}
             className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-5 h-5" />
@@ -198,6 +227,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </select>
           </div>
 
+          <fieldset className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
+            <legend className="text-xs font-black uppercase text-sky-800 px-1">Kies Maatjie se stem</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {VOICE_CHOICES.map((voice) => {
+                const selected = profile.selectedVoiceType === 'elevenlabs' && profile.elevenLabsVoiceKey === voice.id;
+                return (
+                  <button key={voice.id} type="button" disabled={isTestingVoice} aria-pressed={selected}
+                    onClick={() => handleChooseVoice(voice.id)}
+                    className={`p-3 rounded-xl text-sm font-bold border-2 ${selected ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white border-sky-200 text-sky-900'} disabled:opacity-50`}>
+                    {voice.label}{selected ? ' ✓' : ''}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-sky-800 mt-2">Kies 'n stem en druk Toets Stem om te luister. Jou keuse word dadelik gestoor.</p>
+            {voiceTestError && <p role="alert" className="text-xs text-red-700 mt-2">{voiceTestError}</p>}
+          </fieldset>
+
           {/* Voice Preview & Status */}
           <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -209,7 +256,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   ? '🎤 Opgeneemde Eie Stem'
                   : profile.selectedVoiceType === 'webspeech'
                   ? '🔊 Toestel Foneties'
-                  : '🦁 ElevenLabs Afrikaans'}
+                  : `🦁 ${VOICE_CHOICES.find((voice) => voice.id === profile.elevenLabsVoiceKey)?.label || 'ElevenLabs stem'}`}
               </div>
             </div>
 
@@ -228,6 +275,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <div className="pt-2">
             <button
               type="submit"
+              disabled={isTestingVoice}
               className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-sm rounded-2xl shadow-lg transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
               <Check className="w-5 h-5" />
