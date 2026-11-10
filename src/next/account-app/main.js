@@ -17,3 +17,12 @@ const account = storage && prepareSupabaseBrowserAccount({
   sessionStorage: storage
 });
 bindAccountScreen(document, account);
+
+// Offline support is only a generic status page; account access requires a network.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {
+      console.warn('Offline status page could not be installed.');
+    });
+  });
+}
