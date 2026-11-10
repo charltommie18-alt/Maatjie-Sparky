@@ -10,8 +10,8 @@ export class SpeechHelper {
   public isSpeaking = false;
   public isMuted = false;
   public selectedVoiceUri: string | null = null;
-  public elevenLabsVoiceId = 'rHNYx9huRzABmodCtI4Q'; // Requested ElevenLabs Voice ID for authentic Afrikaans
-  public customElevenLabsKey = '';
+  // This is a public choice key, never an ElevenLabs voice ID.
+  public elevenLabsVoiceKey = 'luna';
   public useElevenLabs = true;
   public customVoiceUrl: string | null = null; // User's recorded or uploaded voice clip
   public voiceMode: 'recorded' | 'elevenlabs' | 'webspeech' = 'elevenlabs';
@@ -299,7 +299,7 @@ export class SpeechHelper {
     this.isSpeaking = false;
   }
 
-  // Speak text: tries recorded clip, ElevenLabs (rHNYx9huRzABmodCtI4Q), or resilient on-device Web Speech
+  // Speak text: tries recorded clip, server-configured ElevenLabs voice, or resilient on-device Web Speech
   public async speak(rawText: string, lang: 'af' | 'en' | 'bilingual' = 'af', onEnd?: () => void) {
     if (this.isMuted) {
       if (onEnd) onEnd();
@@ -329,11 +329,11 @@ export class SpeechHelper {
       console.warn('Custom recorded clip playback failed, falling back to speech synthesis');
     }
 
-    // 1. Try ElevenLabs TTS if enabled with a strict 2000ms timeout
+    // 1. Try ElevenLabs TTS, allowing time for network and synthesis.
     if (this.useElevenLabs && this.voiceMode !== 'webspeech') {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch('/api/tts', {
           method: 'POST',
@@ -341,8 +341,7 @@ export class SpeechHelper {
           signal: controller.signal,
           body: JSON.stringify({
             text: cleanedText,
-            voiceId: this.elevenLabsVoiceId || 'rHNYx9huRzABmodCtI4Q',
-            apiKey: this.customElevenLabsKey || undefined
+            voiceKey: this.elevenLabsVoiceKey || 'luna'
           })
         });
         clearTimeout(timeoutId);
@@ -485,12 +484,8 @@ export class SpeechHelper {
     }
   }
 
-  public setVoiceId(voiceId: string) {
-    this.elevenLabsVoiceId = voiceId;
-  }
-
-  public setApiKey(apiKey: string) {
-    this.customElevenLabsKey = apiKey;
+  public setVoiceKey(voiceKey: string) {
+    this.elevenLabsVoiceKey = voiceKey;
   }
 
   public setCustomVoice(url: string | null, mode: 'recorded' | 'elevenlabs' | 'webspeech' = 'recorded') {

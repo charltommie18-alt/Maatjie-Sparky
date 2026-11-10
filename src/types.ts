@@ -20,6 +20,10 @@ export interface ChildProfile {
   autoLockEnabled?: boolean; // When false, screen never auto-locks so parent/child can play without interruption
   uploadedVoiceClips?: { id: string; name: string; url: string; date: string; category?: string }[];
   selectedVoiceType?: 'elevenlabs' | 'recorded' | 'webspeech';
+  /** Safe public selection key; actual voice IDs remain server-side. */
+  elevenLabsVoiceKey?: string;
+  /** @deprecated Legacy persisted field; ignored to prevent exposing voice IDs. */
+  elevenLabsVoiceId?: never;
   selectedVoiceClipId?: string;
   activeCustomVoiceUrl?: string;
 }

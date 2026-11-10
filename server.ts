@@ -28,10 +28,19 @@ const ai = apiKey
     })
   : null;
 
-// ElevenLabs Voice Configuration (Requested voice: rHNYx9huRzABmodCtI4Q)
-const DEFAULT_ELEVENLABS_VOICE_ID = 'rHNYx9huRzABmodCtI4Q';
-let elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || '';
-let activeVoiceId = DEFAULT_ELEVENLABS_VOICE_ID;
+// ElevenLabs configuration is server-only. Public clients use only these safe choice keys.
+const VOICE_KEYS = ['lila', 'milo', 'luna'] as const;
+type VoiceKey = typeof VOICE_KEYS[number];
+const DEFAULT_VOICE_KEY: VoiceKey = 'luna';
+const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || '';
+const elevenLabsVoices: Record<VoiceKey, string | undefined> = {
+  lila: process.env.ELEVENLABS_VOICE_LILA,
+  milo: process.env.ELEVENLABS_VOICE_MILO,
+  luna: process.env.ELEVENLABS_VOICE_LUNA,
+};
+
+const isVoiceKey = (value: unknown): value is VoiceKey =>
+  typeof value === 'string' && (VOICE_KEYS as readonly string[]).includes(value);
 
 // In-memory persistent mock storage for multi-device sync simulation & WhatsApp message hub
 interface StoredData {
@@ -670,96 +679,58 @@ _Veilig gestuur deur Maatjie AI Companion Guardian Hub._`;
   }
 });
 
-// ElevenLabs Text-to-Speech Route (Default Voice ID: rHNYx9huRzABmodCtI4Q)
+// ElevenLabs Text-to-Speech. Requests and responses use safe choice keys only.
 app.post('/api/tts', async (req: Request, res: Response) => {
   try {
-    const { text, voiceId = activeVoiceId, apiKey: customKey } = req.body;
-    const keyToUse = customKey || elevenLabsApiKey || process.env.ELEVENLABS_API_KEY;
+    const { text, voiceKey, voiceId } = req.body;
+    // voiceId is accepted only as a legacy field when it contains one of the safe keys.
+    const requestedVoiceKey: VoiceKey = isVoiceKey(voiceKey)
+      ? voiceKey
+      : isVoiceKey(voiceId)
+        ? voiceId
+        : DEFAULT_VOICE_KEY;
+    const targetVoice = elevenLabsVoices[requestedVoiceKey];
 
-    if (!keyToUse) {
-      return res.json({
-        success: false,
-        fallback: true,
-        message: 'No ElevenLabs API key found. Using enhanced on-device Afrikaans synthesizer.',
-        voiceId: DEFAULT_ELEVENLABS_VOICE_ID
-      });
+    if (!elevenLabsApiKey || !targetVoice) {
+      return res.json({ success: false, fallback: true, message: 'Selected voice is not configured.', voiceKey: requestedVoiceKey });
     }
 
     const cleanText = (text || '')
       .replace(/[*_#`~]/g, '')
       .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
       .trim();
-
-    const targetVoice = voiceId || activeVoiceId || DEFAULT_ELEVENLABS_VOICE_ID;
-    const xiUrl = `https://api.elevenlabs.io/v1/text-to-speech/${targetVoice}`;
+    if (!cleanText) return res.status(400).json({ success: false, error: 'Text is required.' });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    const xiResponse = await fetch(xiUrl, {
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const xiResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(targetVoice)}`, {
       method: 'POST',
-      headers: {
-        'xi-api-key': keyToUse,
-        'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg'
-      },
+      headers: { 'xi-api-key': elevenLabsApiKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
       signal: controller.signal,
-      body: JSON.stringify({
-        text: cleanText,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.85,
-          style: 0.15,
-          use_speaker_boost: true
-        }
-      })
+      body: JSON.stringify({ text: cleanText, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.85, style: 0.15, use_speaker_boost: true } }),
     });
     clearTimeout(timeoutId);
-
     if (!xiResponse.ok) {
-      const errText = await xiResponse.text();
-      console.warn('ElevenLabs API response not ok:', xiResponse.status, errText);
-      return res.json({
-        success: false,
-        fallback: true,
-        error: `ElevenLabs ${xiResponse.status}: ${errText}`
-      });
+      console.warn('ElevenLabs API response not ok:', xiResponse.status);
+      return res.json({ success: false, fallback: true, error: 'Voice service is unavailable.' });
     }
 
-    const arrayBuffer = await xiResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Audio = `data:audio/mpeg;base64,${buffer.toString('base64')}`;
-
-    res.json({
-      success: true,
-      audioUrl: base64Audio,
-      voiceId: targetVoice,
-      source: 'elevenlabs'
-    });
+    const base64Audio = `data:audio/mpeg;base64,${Buffer.from(await xiResponse.arrayBuffer()).toString('base64')}`;
+    res.json({ success: true, audioUrl: base64Audio, voiceKey: requestedVoiceKey, source: 'elevenlabs' });
   } catch (err: any) {
-    console.error('TTS endpoint error:', err);
-    res.json({ success: false, fallback: true, error: err.message });
+    console.error('TTS endpoint error:', err?.name || 'unknown error');
+    res.json({ success: false, fallback: true, error: 'Voice service is unavailable.' });
   }
 });
 
+// Legacy endpoint retained without accepting or revealing API keys/voice IDs.
 app.post('/api/elevenlabs/config', (req: Request, res: Response) => {
-  const { apiKey, voiceId } = req.body;
-  if (apiKey !== undefined) elevenLabsApiKey = apiKey;
-  if (voiceId) activeVoiceId = voiceId;
-  res.json({
-    success: true,
-    hasKey: !!(process.env.ELEVENLABS_API_KEY || elevenLabsApiKey),
-    voiceId: activeVoiceId
-  });
+  const requestedVoiceKey = isVoiceKey(req.body?.voiceKey) ? req.body.voiceKey : isVoiceKey(req.body?.voiceId) ? req.body.voiceId : DEFAULT_VOICE_KEY;
+  res.json({ success: true, hasKey: !!elevenLabsApiKey, voiceKey: requestedVoiceKey });
 });
 
 app.get('/api/elevenlabs/status', (_req: Request, res: Response) => {
-  res.json({
-    hasKey: !!(process.env.ELEVENLABS_API_KEY || elevenLabsApiKey),
-    voiceId: activeVoiceId,
-    defaultVoiceId: DEFAULT_ELEVENLABS_VOICE_ID
-  });
+  res.json({ hasKey: !!elevenLabsApiKey, defaultVoiceKey: DEFAULT_VOICE_KEY, configuredVoiceKeys: VOICE_KEYS.filter((key) => !!elevenLabsVoices[key]) });
 });
 
 // Interactive WhatsApp Chat & Command Center
