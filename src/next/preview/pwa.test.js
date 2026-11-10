@@ -10,7 +10,7 @@ function setup(fail = false) {
   const cache = { async put(url, value) { data.set(url, value); }, async match(url) { return data.get(url); } };
   const caches = { async open() { return cache; }, async keys() { return []; }, async delete() { deleted = true; data.clear(); } };
   const fetch = async (url, opts) => {
-    assert.equal(opts.credentials, 'omit');
+    assert.equal(opts.credentials, 'same-origin');
     const u = new URL(url); const ext = u.pathname.split('.').pop();
     const types = { js: 'text/javascript', css: 'text/css', png: 'image/png', svg: 'image/svg+xml', webmanifest: 'application/manifest+json' };
     return { ok: true, redirected: false, headers: { get: () => fail && ext === 'js' ? 'text/html' : (types[ext] || 'text/html') } };

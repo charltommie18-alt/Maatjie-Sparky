@@ -1,6 +1,6 @@
 // Development preview only. Cache only the immutable, explicitly listed app shell.
 // Never cache account pages, auth, API calls, user data or arbitrary network responses.
-const CACHE = 'slim-maat-preview-shell-v1';
+const CACHE = 'slim-maat-preview-shell-v2';
 const root = new URL('./', self.location.href);
 const assets = [
   './', './index.html', './preview.css', './preview.js', './pwa.js', './manifest.webmanifest', './icon.svg',
@@ -13,7 +13,7 @@ self.addEventListener('install', event => {
     const cache = await caches.open(CACHE);
     try {
       for (const url of assets) {
-        const response = await fetch(url, { cache: 'reload', credentials: 'omit' });
+        const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
         const type = response.headers.get('content-type') || '';
         const mime = type.toLowerCase().split(';')[0].trim();
         const expected = url.endsWith('/') || url.endsWith('.html') ? ['text/html'] :
