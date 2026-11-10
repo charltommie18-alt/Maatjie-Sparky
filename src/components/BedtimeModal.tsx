@@ -42,7 +42,7 @@ export const BedtimeModal: React.FC<BedtimeModalProps> = ({
 
   const handleCheckPin = (pinToTest?: string) => {
     const val = pinToTest || pin;
-    if (val === guardianPin || val === '1234') {
+    if (val && val === guardianPin) {
       setIsUnlocked(true);
       setPinError(false);
       speechService.playSound('success');
@@ -140,7 +140,7 @@ export const BedtimeModal: React.FC<BedtimeModalProps> = ({
             <div className="flex items-center justify-between text-xs text-slate-300">
               <span className="font-bold flex items-center gap-1">
                 <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                Voer Ouer PIN in (Verstek: 1234):
+                Voer Ouer PIN in:
               </span>
               <button
                 onClick={() => setShowPinInput(false)}
@@ -178,16 +178,11 @@ export const BedtimeModal: React.FC<BedtimeModalProps> = ({
 
             {pinError && (
               <p className="text-[11px] text-rose-400 font-bold">
-                Verkeerde PIN. Probeer 1234.
+                Verkeerde PIN. Probeer weer.
               </p>
             )}
 
-            <button
-              onClick={() => handleCheckPin('1234')}
-              className="text-[11px] text-indigo-300 hover:text-indigo-200 underline block mx-auto cursor-pointer"
-            >
-              Kits-ontsluit met verstek PIN (1234)
-            </button>
+
           </div>
         ) : (
           /* Standard Bedtime Buttons */
@@ -207,7 +202,7 @@ export const BedtimeModal: React.FC<BedtimeModalProps> = ({
               className="w-full py-2.5 px-4 rounded-2xl bg-emerald-700/80 hover:bg-emerald-600 border border-emerald-400/40 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition active:scale-98 cursor-pointer"
             >
               <Unlock className="w-4 h-4 text-emerald-300" />
-              <span>Ouer Ontsluiting (Voer PIN 1234 In) 🔓</span>
+              <span>Ouer Ontsluiting (Voer PIN In) 🔓</span>
             </button>
           </div>
         )}

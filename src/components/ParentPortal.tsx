@@ -5,7 +5,6 @@ import {
   Volume2, Mic, MicOff, Upload, Play, Square, Pause, Trash2
 } from 'lucide-react';
 import { ChildProfile, ParentLoveNote, WhatsAppLog, VaultMedia } from '../types';
-import { encryptPayload, decryptPayload } from '../utils/encryption';
 import { speechService } from '../utils/speech';
 import { VOICE_CHOICES } from '../utils/voiceChoices';
 
@@ -35,6 +34,12 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [pinNotice, setPinNotice] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) { setIsAuthenticated(false); setPinInput(''); setNewPin(''); setPinNotice(''); }
+  }, [isOpen]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'voice' | 'whatsapp' | 'creator' | 'vault' | 'privacy'>('dashboard');
 
   // Auto-lock & screen time bypass state
@@ -73,7 +78,6 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
 
   // Push notifications state
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced'>('idle');
 
   // Settings
   const [dailyLimit, setDailyLimit] = useState(profile.dailyLimitMinutes || 30);
@@ -109,7 +113,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
   }, []);
 
   const handleVerifyPin = () => {
-    if (pinInput === profile.guardianPin || pinInput === '1234') {
+    if (pinInput && pinInput === profile.guardianPin) {
       setIsAuthenticated(true);
       setPinError(false);
       setPinInput('');
@@ -462,27 +466,6 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
     speechService.playSound('star');
   };
 
-  const handleSyncDevices = async () => {
-    setSyncStatus('syncing');
-    try {
-      const encrypted = encryptPayload({
-        profile,
-        timestamp: Date.now()
-      });
-      const res = await fetch('/api/vault/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ encryptedPayload: encrypted })
-      });
-      await res.json();
-      setSyncStatus('synced');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-      speechService.playSound('success');
-    } catch {
-      setSyncStatus('idle');
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -496,7 +479,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black font-fredoka flex items-center gap-2">
-                Ouer Portaal & Beheer <span className="text-xs bg-indigo-700 px-2 py-0.5 rounded-full border border-indigo-400 font-mono">PIN: 1234</span>
+                Ouer Portaal & Beheer
               </h2>
               <p className="text-xs sm:text-sm text-indigo-200">
                 Geverifieerde Voog Toegang • WhatsApp Integrasie • EQ & Wiskunde Monitering
@@ -521,7 +504,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
               Voer Ouer PIN In
             </h3>
             <p className="mt-1 text-sm text-slate-600">
-              Beskerm teen kindertoegang. Verstek PIN is <strong className="text-indigo-600">1234</strong>.
+              Voer jou PIN in. As jy nog nie jou PIN verander het nie, gebruik die verstek-PIN 1234 en verander dit in Privaatheid.
             </p>
 
             <div className="mt-6 w-full">
@@ -540,7 +523,7 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
 
               {pinError && (
                 <p className="mt-2 text-xs font-bold text-rose-500">
-                  Verkeerde PIN. Probeer 1234.
+                  Verkeerde PIN. Probeer weer.
                 </p>
               )}
 
@@ -1462,37 +1445,18 @@ export const ParentPortal: React.FC<ParentPortalProps> = ({
                       Privaatheid & Veelvoudige Toestel-Sinkronisasie
                     </h4>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Alle data van {profile.name} (wiskunde tellings, emosie logboeke en foto's) word plaaslik geïnkripteer met AES-256 en bly 100% privaat vir jou gesin.
+                      Die profiel word op hierdie toestel gestoor en is nie geïnkripteer nie. Moenie sensitiewe inligting invoer nie. Sinkronisasie tussen toestelle is nog nie beskikbaar nie.
                     </p>
-
-                    <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        <div>
-                          <div className="text-xs font-bold text-emerald-950">Data Enkripsie Aktief</div>
-                          <div className="text-[11px] text-emerald-700">Plaaslike kodesleutel: AES-256 GCM</div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2 py-0.5 rounded-full border border-emerald-300">
-                        Veilig
-                      </span>
-                    </div>
-
-                    <div className="pt-2">
-                      <button
-                        onClick={handleSyncDevices}
-                        disabled={syncStatus === 'syncing'}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-                        <span>
-                          {syncStatus === 'syncing'
-                            ? 'Sinkroniseer tans met Geïnkripteerde Wolk...'
-                            : syncStatus === 'synced'
-                            ? 'Gesinchroniseer oor alle toestelle! ✓'
-                            : 'Sinkroniseer Oor Alle Toestelle Nou (Multi-Device Sync)'}
-                        </span>
-                      </button>
+                    <div className="space-y-2">
+                      <label htmlFor="new-parent-pin" className="block text-xs font-bold text-slate-700">Verander ouer-PIN (4 syfers)</label>
+                      <input id="new-parent-pin" type="password" inputMode="numeric" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))} className="w-full p-2 rounded-xl border border-slate-300" />
+                      <button type="button" onClick={() => {
+                        if (!/^\d{4}$/.test(newPin) || newPin === '1234') { setPinNotice('Kies vier syfers, anders as 1234.'); return; }
+                        onUpdateProfile({ guardianPin: newPin });
+                        setNewPin('');
+                        setPinNotice('PIN op hierdie toestel verander. Dit is nie rekeningsekuriteit nie.');
+                      }} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl">Stoor nuwe PIN</button>
+                      {pinNotice && <p role="status" className="text-xs text-slate-700">{pinNotice}</p>}
                     </div>
                   </div>
 

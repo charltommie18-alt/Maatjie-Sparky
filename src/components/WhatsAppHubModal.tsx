@@ -254,7 +254,7 @@ _Stuur gerus 'LIEFDE [boodskap]' om 'n briefie na ${profile.name} se skerm te st
               <div className="flex justify-center my-1">
                 <div className="bg-[#FFF3C2] text-[#54656F] text-[10px] font-semibold px-3 py-1 rounded-lg shadow-xs text-center max-w-sm flex items-center gap-1 border border-amber-200">
                   <Shield className="w-3 h-3 text-amber-700 shrink-0" />
-                  <span>Boodskappe tussen Maatjie en voogde is geïnkripteer en 100% privaat.</span>
+                  <span>Hierdie klets is ’n demonstrasie en bied nie bevestigde privaatheid of regte WhatsApp-integrasie nie. Moenie persoonlike inligting deel nie.</span>
                 </div>
               </div>
 
