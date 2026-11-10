@@ -59,7 +59,8 @@ export default function App() {
       profile.activeCustomVoiceUrl || null,
       profile.selectedVoiceType || 'elevenlabs'
     );
-  }, [profile.selectedVoiceType, profile.activeCustomVoiceUrl]);
+    if (profile.elevenLabsVoiceKey) speechService.setVoiceKey(profile.elevenLabsVoiceKey);
+  }, [profile.selectedVoiceType, profile.activeCustomVoiceUrl, profile.elevenLabsVoiceKey]);
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
