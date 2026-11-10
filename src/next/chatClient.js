@@ -12,7 +12,7 @@ function cleanMessage(message) {
   return { role: message.role, text: message.text.trim() };
 }
 
-/** Send only the last 20 turns to a same-origin backend. Never fabricates a reply. */
+/** Send only the last 20 messages to a same-origin backend. Never fabricates a reply. */
 export async function requestChatReply(messages, options = {}) {
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new TypeError("A conversation is required");
@@ -36,7 +36,7 @@ export async function requestChatReply(messages, options = {}) {
     });
     if (!response.ok) throw new Error("Chat service unavailable");
     const data = await response.json();
-    if (!data || typeof data.reply !== "string" || !data.reply.trim() || data.reply.length > 20000) {
+    if (!data || typeof data.reply !== "string" || !data.reply.trim() || data.reply.length > MAX_TEXT_LENGTH) {
       throw new Error("Invalid response from chat service");
     }
     return { role: "assistant", text: data.reply.trim(), createdAt: new Date().toISOString() };
