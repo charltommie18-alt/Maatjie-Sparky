@@ -1,77 +1,67 @@
 // This isolated controller is not an age or AI access control.
+// Account creation is deliberately disabled in every runtime. Do not make this configurable here.
 export function bindAccountScreen(doc, account) {
   const $ = id => doc.getElementById(id);
-  const form = $('account-form'), email = $('account-email'), password = $('account-password'), confirmation = $('account-confirm');
+  const form = $('account-form'), email = $('account-email'), password = $('account-password');
   const status = $('account-status'), submit = $('account-submit'), signout = $('signout');
   const signinTab = $('show-signin'), signupTab = $('show-signup');
-  let mode = 'signin', pending = !!account, signedIn = false;
+  let pending = !!account, signedIn = false;
   const available = !!account;
   function render() {
     form.hidden = signedIn;
     signinTab.disabled = !available || pending || signedIn;
-    signupTab.disabled = !available || pending || signedIn;
+    // Fail closed: no runtime config, DOM change, or account object enables registration.
+    signupTab.disabled = true;
     submit.disabled = !available || pending || signedIn;
     signout.hidden = !signedIn;
     signout.disabled = !available || pending || !signedIn;
   }
-  function setMode(next) {
-    if (!available || pending || signedIn) return;
-    mode = next; form.reset(); status.textContent = '';
-    const signup = mode === 'signup';
-    signinTab.setAttribute('aria-pressed', String(!signup));
-    signupTab.setAttribute('aria-pressed', String(signup));
-    $('account-heading').textContent = signup ? 'Skep jou rekening' : 'Welkom terug';
-    $('account-intro').textContent = signup ? 'Gebruik ’n e-posadres waartoe jy toegang het.' : 'Meld aan met jou e-posadres.';
-    $('confirm-wrap').hidden = !signup; confirmation.required = signup;
-    password.autocomplete = signup ? 'new-password' : 'current-password';
-    submit.textContent = signup ? 'Skep rekening' : 'Meld aan';
-  }
   function showSignedIn() {
     signedIn = true;
     $('account-heading').textContent = 'Jy is aangemeld';
-    $('account-intro').textContent = 'Hierdie is steeds net ’n privaat rekeningtoets.';
+    $('account-intro').textContent = 'Hierdie is steeds net ’n privaat aanmeldingstoets.';
     status.textContent = 'Jy is aangemeld en jou aanmelding is geverifieer. AI is steeds nie beskikbaar nie.';
   }
   function showSignedOut() {
     signedIn = false;
-    mode = 'signin';
-    signinTab.setAttribute('aria-pressed', 'true'); signupTab.setAttribute('aria-pressed', 'false');
+    signinTab.setAttribute('aria-pressed', 'true');
+    signupTab.setAttribute('aria-pressed', 'false');
     $('account-heading').textContent = 'Welkom terug';
-    $('account-intro').textContent = 'Meld aan met jou e-posadres.';
-    $('confirm-wrap').hidden = true; confirmation.required = false;
-    password.autocomplete = 'current-password'; submit.textContent = 'Meld aan';
+    $('account-intro').textContent = 'Meld aan met jou bestaande e-posrekening.';
+    password.autocomplete = 'current-password';
+    submit.textContent = 'Meld aan';
   }
-  signinTab.addEventListener('click', () => setMode('signin'));
-  signupTab.addEventListener('click', () => setMode('signup'));
+  signinTab.addEventListener('click', () => {
+    if (!available || pending || signedIn) return;
+    form.reset(); status.textContent = '';
+  });
+  // Keep a defensive handler in case the disabled control is activated programmatically.
+  signupTab.addEventListener('click', () => { status.textContent = 'Nuwe rekeningregistrasie is gedeaktiveer.'; });
   render();
-  status.textContent = available ? 'Aanmelding word nagegaan.' : 'Rekeningdiens is nie ingestel nie.';
+  status.textContent = available ? 'Aanmelding word nagegaan.' : 'Rekeningdiens is nie ingestel nie. Geen werklike aanmelding is beskikbaar nie.';
   const ready = available ? (async () => {
     try {
       const user = await account.verifiedUser();
       if (user) showSignedIn();
-      else { showSignedOut(); status.textContent = 'Rekeningdiens is gereed vir ’n privaat toets.'; }
+      else { showSignedOut(); status.textContent = 'Registrasie is gedeaktiveer. Meld met ’n bestaande rekening aan sodra die diens ingestel is.'; }
     } catch {
-      showSignedOut(); status.textContent = 'Aanmelding kon nie geverifieer word nie. Meld weer aan.';
+      showSignedOut(); status.textContent = 'Aanmelding kon nie geverifieer word nie. Geen werklike aanmelding is beskikbaar nie.';
     } finally { pending = false; render(); }
   })() : Promise.resolve();
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!available || pending || signedIn) return;
-    if (!email.validity.valid || !password.validity.valid || (mode === 'signup' && !confirmation.validity.valid)) {
+    if (!email.validity.valid || !password.validity.valid) {
       status.textContent = 'Vul ’n geldige e-posadres en wagwoord van minstens 8 karakters in.'; return;
     }
-    if (mode === 'signup' && password.value !== confirmation.value) {
-      confirmation.value = ''; status.textContent = 'Die wagwoorde stem nie ooreen nie.'; confirmation.focus(); return;
-    }
     pending = true; render();
-    const thisMode = mode, address = email.value, secret = password.value;
-    password.value = ''; confirmation.value = '';
+    const address = email.value, secret = password.value;
+    password.value = '';
     status.textContent = 'Wag asseblief.';
     try {
-      const result = thisMode === 'signup' ? await account.signUp(address, secret) : await account.signIn(address, secret);
+      const result = await account.signIn(address, secret);
       form.reset();
       if (!result?.ok) status.textContent = 'Dit kon nie voltooi word nie. Gaan jou besonderhede na en probeer weer.';
-      else if (thisMode === 'signup') status.textContent = 'As registrasie aanvaar is, kyk jou e-pos vir ’n bevestigingskakel voordat jy aanmeld.';
       else {
         const user = await account.verifiedUser();
         if (user) showSignedIn();
