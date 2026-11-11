@@ -38,3 +38,7 @@ test('fails closed on missing or invalid configuration and secrets', () => {
   assert.equal(prepareSupabaseBrowserAccount({ createClient: () => { throw Error('private'); }, url, publishableKey }), null);
   assert.equal(prepareSupabaseBrowserAccount({ createClient: () => ({}), url, publishableKey }), null);
 });
+test('prepared account boundary never exposes signup even when SDK provides it', () => {
+  const account = prepareSupabaseBrowserAccount({ createClient: () => ({ auth: { signUp() { throw Error('not allowed'); }, signInWithPassword() {}, signOut() {}, getUser() {} } }), url, publishableKey });
+  assert.equal(typeof account.signUp, 'undefined');
+});
