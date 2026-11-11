@@ -9,13 +9,14 @@ export function bindAccountScreen(doc, account) {
   function render() {
     form.hidden = signedIn;
     signinTab.disabled = !available || pending || signedIn;
-    signupTab.disabled = !available || pending || signedIn;
+    // Production-backed preview: account creation is disabled for this test.
+    signupTab.disabled = true;
     submit.disabled = !available || pending || signedIn;
     signout.hidden = !signedIn;
     signout.disabled = !available || pending || !signedIn;
   }
   function setMode(next) {
-    if (!available || pending || signedIn) return;
+    if (!available || pending || signedIn || next !== 'signin') return;
     mode = next; form.reset(); status.textContent = '';
     const signup = mode === 'signup';
     signinTab.setAttribute('aria-pressed', String(!signup));
@@ -72,7 +73,8 @@ export function bindAccountScreen(doc, account) {
     password.value = ''; confirmation.value = '';
     status.textContent = 'Wag asseblief.';
     try {
-      const result = thisMode === 'signup' ? await account.signUp(address, secret) : await account.signIn(address, secret);
+      // This preview never calls registration against the production service.
+      const result = await account.signIn(address, secret);
       form.reset();
       if (!result?.ok) status.textContent = 'Dit kon nie voltooi word nie. Gaan jou besonderhede na en probeer weer.';
       else if (thisMode === 'signup') status.textContent = 'As registrasie aanvaar is, kyk jou e-pos vir ’n bevestigingskakel voordat jy aanmeld.';
