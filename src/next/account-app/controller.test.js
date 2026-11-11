@@ -14,7 +14,7 @@ async function screen(account){
 }
 function fake(restored=false){let signedIn=restored;return {signUp:async()=>({ok:true}),signIn:async()=>{signedIn=true;return {ok:true}},verifiedUser:async()=>signedIn?{id:'1'}:null,signOut:async()=>{signedIn=false;return {ok:true}}};}
 test('missing config fails closed',async()=>{const e=await screen(null);assert.equal(e['account-submit'].disabled,true);await e['account-form'].fire('submit');assert.match(e['account-status'].textContent,/nie ingestel/)});
-test('registration mismatch blocks, matching submits and gives neutral result',async()=>{const a=fake();let calls=0;a.signUp=async()=>{calls++;return {ok:true}};const e=await screen(a);await e['show-signup'].fire('click');e['account-email'].value='a@example.test';e['account-password'].value='abcdefgh';e['account-confirm'].value='bad';await e['account-form'].fire('submit');assert.equal(calls,0);assert.match(e['account-status'].textContent,/stem nie ooreen/);e['account-confirm'].value='abcdefgh';await e['account-form'].fire('submit');assert.equal(calls,1);assert.match(e['account-status'].textContent,/As registrasie aanvaar/);assert.equal(e['account-password'].value,'');assert.equal(e.signout.hidden,true)});
+test('registration remains disabled even when the click handler is invoked',async()=>{const a=fake();let calls=0;a.signUp=async()=>{calls++;return {ok:true}};const e=await screen(a);assert.equal(e['show-signup'].disabled,true);await e['show-signup'].fire('click');assert.equal(e['account-heading'].textContent,'Welkom terug');e['account-email'].value='a@example.test';e['account-password'].value='abcdefgh';await e['account-form'].fire('submit');assert.equal(calls,0);assert.equal(e.signout.hidden,false)});
 test('verified sign in and local sign out',async()=>{const e=await screen(fake());e['account-email'].value='a@example.test';e['account-password'].value='abcdefgh';assert.equal(await e['account-form'].fire('submit'),true);assert.equal(e.signout.hidden,false);assert.match(e['account-status'].textContent,/aangemeld/);await e.signout.fire('click');assert.equal(e.signout.hidden,true);assert.match(e['account-status'].textContent,/afgemeld/)});
 test('verified restored session displays signed-in state',async()=>{const e=await screen(fake(true));assert.equal(e.signout.hidden,false);assert.match(e['account-status'].textContent,/aangemeld/)});
 test('restoring a session clears autofilled credentials before hiding the form',async()=>{
@@ -39,7 +39,7 @@ test('verified session hides credentials, blocks repeat submissions and restores
  assert.equal(calls,0); assert.equal(e['account-heading'].textContent,'Jy is aangemeld');
  await e.signout.fire('click');
  assert.equal(e['account-form'].hidden,false); assert.equal(e['account-submit'].disabled,false);
- assert.equal(e['show-signup'].disabled,false); assert.equal(e.signout.hidden,true);
+ assert.equal(e['show-signup'].disabled,true); assert.equal(e.signout.hidden,true);
  assert.equal(e['account-heading'].textContent,'Welkom terug');
 });
 test('failed signout keeps the verified session state and allows retry',async()=>{
@@ -55,7 +55,7 @@ test('controls stay disabled while restoring and duplicate submits are blocked w
  const ready=bindAccountScreen({getElementById:id=>e[id]},a);
  assert.equal(e['account-submit'].disabled,true); assert.equal(e['show-signup'].disabled,true);
  await e['show-signup'].fire('click'); assert.equal(e['confirm-wrap'].hidden,false);
- resolve(null); await ready; assert.equal(e['show-signup'].disabled,false);
+ resolve(null); await ready; assert.equal(e['show-signup'].disabled,true);
  let finish; let calls=0; a.signIn=()=>{calls++;return new Promise(r=>finish=r)};
  const first=e['account-form'].fire('submit'); await e['account-form'].fire('submit');
  assert.equal(calls,1); assert.equal(e['account-submit'].disabled,true);
