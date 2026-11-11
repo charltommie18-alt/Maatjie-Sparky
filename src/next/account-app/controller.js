@@ -27,6 +27,10 @@ export function bindAccountScreen(doc, account) {
     submit.textContent = signup ? 'Skep rekening' : 'Meld aan';
   }
   function showSignedIn() {
+    // Browsers may autofill while session restoration is pending. Do not leave
+    // credentials in a hidden form after the restored user is verified.
+    form.reset();
+    password.value = ''; confirmation.value = ''; email.value = '';
     signedIn = true;
     $('account-heading').textContent = 'Jy is aangemeld';
     $('account-intro').textContent = 'Hierdie is steeds net ’n privaat rekeningtoets.';
