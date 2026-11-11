@@ -1,12 +1,11 @@
 <!doctype html>
 <html lang="af"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Slim Maat - Toetsrekening</title><link rel="stylesheet" href="./style.css"></head>
 <body><main class="shell"><header><p class="eyebrow">PRIVAAT ONTWIKKELINGSTOETS</p><h1>Slim Maat</h1><p>Rekeningtoets</p></header>
-<aside class="notice">Hierdie toetsskerm kan regte Supabase-rekeninge skep. Nie vir publieke gebruik nie. Regte AI en ouderdomsverifikasie is nog nie beskikbaar nie.</aside>
-<section class="card"><nav class="tabs" aria-label="Kies rekeningskerm"><button type="button" id="show-signin" aria-pressed="true" disabled>Meld aan</button><button type="button" id="show-signup" aria-pressed="false" disabled>Skep rekening</button></nav>
-<h2 id="account-heading">Welkom terug</h2><p id="account-intro">Meld aan met jou e-posadres.</p>
+<aside class="notice">Registrasie is gedeaktiveer. Geen werklike aanmelding is beskikbaar totdat ’n bestaande Supabase-rekeningdiens veilig ingestel is nie. AI en ouderdomsverifikasie is nie beskikbaar nie.</aside>
+<section class="card"><nav class="tabs" aria-label="Kies rekeningskerm"><button type="button" id="show-signin" aria-pressed="true" disabled>Meld aan</button><button type="button" id="show-signup" aria-pressed="false" disabled aria-disabled="true">Registrasie gedeaktiveer</button></nav>
+<h2 id="account-heading">Welkom terug</h2><p id="account-intro">Meld aan met jou bestaande e-posrekening.</p>
 <form id="account-form"><label for="account-email">E-posadres</label><input id="account-email" type="email" autocomplete="email" maxlength="254" required>
 <label for="account-password">Wagwoord</label><input id="account-password" type="password" autocomplete="current-password" minlength="8" maxlength="1024" required>
-<div id="confirm-wrap" hidden><label for="account-confirm">Bevestig wagwoord</label><input id="account-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="1024"></div>
 <button type="submit" id="account-submit" disabled>Meld aan</button></form>
 <button type="button" id="signout" hidden>Meld op dié toestel af</button><p id="account-status" role="status" aria-live="polite">Rekeningdiens word nagegaan.</p></section>
-<p class="footnote">E-posbevestiging word vereis. Aanmelding is nie bewys van ouderdom nie en ontsluit nie AI nie.</p></main><script type="module" src="./main.js"></script></body></html>
+<p class="footnote">Registrasie bly gedeaktiveer, selfs wanneer openbare Supabase-konfigurasie beskikbaar is. Aanmelding is nie bewys van ouderdom nie en ontsluit nie AI nie.</p></main><script type="module" src="./main.js"></script></body></html>
