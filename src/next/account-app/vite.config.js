@@ -8,6 +8,11 @@ const iconBytes = name => readFileSync(fileURLToPath(new URL(`../../../public/${
 // Reuse the existing project icons while keeping the built app self-contained.
 export default defineConfig({
   base: './',
+  // The local tools preview is a separate entry point, not account or AI access.
+  build: { rollupOptions: { input: {
+    account: fileURLToPath(new URL('./index.html', import.meta.url)),
+    tools: fileURLToPath(new URL('./tools-prototype.html', import.meta.url))
+  } } },
   plugins: [{
     name: 'slim-maat-icons',
     configureServer(server) {
