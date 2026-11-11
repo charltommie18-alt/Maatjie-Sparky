@@ -11,7 +11,8 @@ export default defineConfig({
   // The local tools preview is a separate entry point, not account or AI access.
   build: { rollupOptions: { input: {
     account: fileURLToPath(new URL('./index.html', import.meta.url)),
-    tools: fileURLToPath(new URL('./tools-prototype.html', import.meta.url))
+    tools: fileURLToPath(new URL('./tools-prototype.html', import.meta.url)),
+    historyDemo: fileURLToPath(new URL('./history-demo.html', import.meta.url))
   } } },
   plugins: [{
     name: 'slim-maat-icons',
