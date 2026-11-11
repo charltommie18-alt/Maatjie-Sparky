@@ -6,7 +6,13 @@ const source = name => readFile(new URL(name, import.meta.url), 'utf8');
 
 test('account and local tools preview link to each other without claiming account protection', async () => {
   const [account, tools] = await Promise.all([source('./index.html'), source('./tools-prototype.html')]);
-  assert.match(account, /href="\.\/tools-prototype\.html"/);
+  assert.match(account, /href="\.\/tools-prototype\.html#game"/);
+  assert.match(account, /href="\.\/tools-prototype\.html#drawing-section"/);
+  assert.match(account, /href="#account"/);
+  assert.match(account, /nie aan jou rekening gekoppel nie/);
+  assert.match(account, /word nog gebou en is nie beskikbaar nie/);
+  assert.match(tools, /id="game"/);
+  assert.match(tools, /id="drawing-section"/);
   assert.match(tools, /href="\.\/index\.html"/);
   assert.match(tools, /Niks word outomaties gestoor of gesinkroniseer nie/);
   assert.match(tools, /Internet is nodig/);
