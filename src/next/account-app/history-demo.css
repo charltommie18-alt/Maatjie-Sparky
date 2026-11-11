@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 1rem/1.5 system-ui, sans-serif; color: #25203a; background: #f7f5fb; }
+main { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+section, .notice { background: white; border-radius: .8rem; padding: 1rem; margin: 1rem 0; }
+.notice { border-left: .3rem solid #764caa; }
+button { padding: .7rem 1rem; border: 1px solid #6f4b9c; border-radius: .5rem; background: #f4effc; color: #302048; font: inherit; cursor: pointer; }
+button:focus-visible { outline: .2rem solid #a970da; outline-offset: .15rem; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+ul { padding-left: 1.5rem; }
+li { margin: .5rem 0; overflow-wrap: anywhere; }
