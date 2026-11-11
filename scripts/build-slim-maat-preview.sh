@@ -15,4 +15,5 @@ cp public/pwa-192x192.png public/pwa-512x512.png dist/public/
 # The account application is source-built at /account/. It has no PWA plugin,
 # so it cannot register the old preview service worker.
 cd src/next/account-app
+npx --yes pnpm@9.15.5 install --frozen-lockfile --ignore-scripts
 npx --yes --package=vite@6.4.1 vite build
